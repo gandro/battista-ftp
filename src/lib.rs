@@ -11,7 +11,7 @@ use tokio_proto::TcpServer;
 use tokio_proto::pipeline::ServerProto;
 use tokio_service::Service;
 
-use parser::command::Command;
+use parser::command::{Command, ParseError};
 use parser::reply::Reply;
 
 pub struct FtpCodec;
@@ -21,7 +21,11 @@ impl Codec for FtpCodec {
     type Out = Reply;
 
     fn decode(&mut self, buf: &mut EasyBuf) -> io::Result<Option<Self::In>> {
-        Command::decode(&mut buf.get_mut())
+        match Command::decode(&mut buf.get_mut()) {
+            Ok(cmd) => Ok(Some(cmd)),
+            Err(ParseError::MissingInput) => Ok(None),
+            Err(err) => Err(io::ErrorKind::Other.into())
+        }
     }
 
     fn encode(&mut self, reply: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
